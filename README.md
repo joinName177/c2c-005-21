@@ -4,7 +4,7 @@ Vue 3 + TypeScript + Vite 纯前端声音创作工具。支持最长 10 秒录�
 
 ## 架构
 
-- `src/core`：作品模型、特征归一化、情绪规则与封面预设
+- `src/core`：作品模型、特征归一化、情绪规则、封面预设与封面文字排版引擎（预览与导出共用同一套换行/字号/定位结果，放不下的文字完整保留并阻止保存）
 - `src/ports`：录音、音频、Canvas、仓储与分享接口
 - `src/adapters`：MediaRecorder、Web Audio、Canvas、IndexedDB、Web Share 实现
 - `src/ui`：Vue 阶段式工作流和原生 CSS

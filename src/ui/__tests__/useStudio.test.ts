@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useStudio, type StudioDependencies } from '../useStudio';
 import { coverPresetFor } from '../../core/cover-presets';
+import { CoverLayoutError } from '../../core/cover-layout';
 import type { VoiceMeme } from '../../core/models';
 
 function dependencies(overrides: Partial<StudioDependencies> = {}): StudioDependencies {
@@ -35,5 +36,24 @@ describe('useStudio', () => {
     await studio.save(); expect(studio.error.value).toContain('保存失败'); expect(studio.draft.audio?.size).toBe(1);
     const existing = { id:'old',title:'旧作品',emotion:'温柔姐姐' as const,confidence:.8,features:{loudness:.2,dynamics:.2,pitch:.4,zeroCrossing:.2,pauseRatio:.3,tempoVariation:.2},audio:new Blob(['a']),duration:1,cover:new Blob(['c']),coverConfig:coverPresetFor('温柔姐姐'),createdAt:'2026-10-05' };
     studio.editMeme(existing); expect(studio.draft.title).toBe('旧作品'); expect(studio.stage.value).toBe('cover');
+  });
+  it('blocks save when cover text overflows and keeps the stored cover untouched', async () => {
+    let savedCalls = 0; let overflowing = true;
+    const studio = useStudio(dependencies({
+      renderer: { render: async () => { if (overflowing) throw new CoverLayoutError('封面文字超出可绘制区域'); return new Blob(['cover'], { type: 'image/png' }); } },
+      repository: { list: async()=>[], save: async()=>{ savedCalls++; }, rename:async()=>{}, delete:async()=>{} },
+    }));
+    studio.draft.audio = new Blob(['a']); studio.draft.duration = 1;
+    studio.cover.value = { ...coverPresetFor('元气满满'), bubbleText: '好'.repeat(2000) };
+    studio.emotion.value = { label:'元气满满',confidence:.9,explanation:'测试',scores:{'暴躁老哥':0,'温柔姐姐':0,'阴阳怪气':0,'元气满满':1} };
+    studio.features.value = { loudness:.2,dynamics:.2,pitch:.4,zeroCrossing:.2,pauseRatio:.3,tempoVariation:.2 };
+    await studio.save();
+    expect(savedCalls).toBe(0); // 未写库，旧作品封面保持原图
+    expect(studio.error.value).toContain('超出可绘制区域');
+    expect(studio.cover.value.bubbleText).toHaveLength(2000); // 文字完整保留
+    expect(studio.saving.value).toBe(false);
+    overflowing = false; studio.cover.value = { ...studio.cover.value, bubbleText: '改短了' };
+    await studio.save();
+    expect(savedCalls).toBe(1); expect(studio.stage.value).toBe('collection');
   });
 });
