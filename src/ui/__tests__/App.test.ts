@@ -33,4 +33,14 @@ describe('Voice meme App', () => {
     await wrapper.get('[data-testid="to-cover"]').trigger('click'); await wrapper.get('[aria-label="气泡文字"]').setValue('轻轻说一句'); await wrapper.get('[data-testid="save-work"]').trigger('click'); await Promise.resolve(); await Promise.resolve();
     expect(wrapper.text()).toContain('作品集'); expect(wrapper.text()).toContain('我的声音表情');
   });
+  it('disables save and shows overflow guidance without dropping text', async () => {
+    const wrapper=mount(App,{props:{dependencies:deps()}}); await wrapper.get('[data-testid="record"]').trigger('click'); await wrapper.get('[data-testid="stop"]').trigger('click'); await Promise.resolve();
+    await wrapper.get('[data-testid="analyze"]').trigger('click'); await Promise.resolve(); await wrapper.get('[data-testid="to-cover"]').trigger('click');
+    await wrapper.get('[aria-label="气泡文字"]').setValue('满'.repeat(500));
+    const saveButton = wrapper.get('[data-testid="save-work"]');
+    expect((saveButton.element as HTMLButtonElement).disabled).toBe(true);
+    expect(wrapper.text()).toContain('放不下');
+    // 文字仍完整保留在预览中
+    expect((wrapper.get('[aria-label="气泡文字"]').element as HTMLTextAreaElement).value.length).toBe(500);
+  });
 });

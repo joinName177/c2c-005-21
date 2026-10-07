@@ -36,4 +36,17 @@ describe('useStudio', () => {
     const existing = { id:'old',title:'旧作品',emotion:'温柔姐姐' as const,confidence:.8,features:{loudness:.2,dynamics:.2,pitch:.4,zeroCrossing:.2,pauseRatio:.3,tempoVariation:.2},audio:new Blob(['a']),duration:1,cover:new Blob(['c']),coverConfig:coverPresetFor('温柔姐姐'),createdAt:'2026-10-05' };
     studio.editMeme(existing); expect(studio.draft.title).toBe('旧作品'); expect(studio.stage.value).toBe('cover');
   });
+  it('blocks saving while text cannot fit, keeping every character', async () => {
+    let saveCalls = 0;
+    const studio = useStudio(dependencies({ repository: { list:async()=>[], save:async()=>{saveCalls += 1;}, rename:async()=>{}, delete:async()=>{} } }));
+    studio.draft.audio = new Blob(['a']); studio.draft.duration = 1;
+    studio.cover.value = { ...coverPresetFor('元气满满'), bubbleText: '满'.repeat(500) };
+    studio.emotion.value = { label:'元气满满',confidence:.8,explanation:'满',scores:{'暴躁老哥':0,'温柔姐姐':0,'阴阳怪气':0,'元气满满':1} };
+    studio.features.value = { loudness:.2,dynamics:.2,pitch:.4,zeroCrossing:.2,pauseRatio:.3,tempoVariation:.2 };
+    await studio.save();
+    expect(studio.coverLayout.value.fit).toBe(false);
+    expect(saveCalls).toBe(0);
+    expect(studio.error.value).toContain('无法完整显示');
+    expect(studio.cover.value.bubbleText.length).toBe(500);
+  });
 });
